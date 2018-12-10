@@ -18,16 +18,17 @@ class PublicClient(object):
 
     """
 
-    def __init__(self, api_url='https://api.pro.coinbase.com', timeout=30):
+    def __init__(self, api_url='https://api.pro.coinbase.com', timeout=30, raw=False):
         """Create cbpro API public client.
 
         Args:
             api_url (Optional[str]): API URL. Defaults to cbpro API.
-
+            raw (Optional[bool]): if True, then return raw responses (which are JSON encoded strings), otherwise as a JSON (default)
         """
         self.url = api_url.rstrip('/')
         self.auth = None
         self.session = requests.Session()
+        self.raw = raw
 
     def get_products(self):
         """Get a list of available currency pairs for trading.
@@ -267,7 +268,7 @@ class PublicClient(object):
         url = self.url + endpoint
         r = self.session.request(method, url, params=params, data=data,
                                  auth=self.auth, timeout=30)
-        return r.json()
+        return r.text if self.raw else r.json()
 
     def _send_paginated_message(self, endpoint, params=None):
         """ Send API message that results in a paginated response.
@@ -297,9 +298,12 @@ class PublicClient(object):
         url = self.url + endpoint
         while True:
             r = self.session.get(url, params=params, auth=self.auth, timeout=30)
-            results = r.json()
-            for result in results:
-                yield result
+            if self.raw:
+                yield r.text
+            else:
+                results = r.json()
+                for result in results:
+                    yield result
             # If there are no more pages, we're done. Otherwise update `after`
             # param to get next page.
             # If this request included `before` don't get any more pages - the
